@@ -1,0 +1,754 @@
+<div id="particles-js"></div>
+<script src="{{ (resources.Get "background/particles.min.js").RelPermalink }}"></script>
+<script>
+  particlesJS.load('particles-js', '{{ (resources.Get "background/particlesjs-config.json").RelPermalink }}', function() {
+    console.log('particles.js loaded - callback');
+  });
+</script>
+<style>
+  #particles-js {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+  }
+  /* body 半透明让下方粒子隐约可见，同时保留主题的明暗切换 */
+  body {
+    background: rgba(245, 245, 250, 0.85) !important;
+  }
+  [data-scheme="dark"] body {
+    background: rgba(48, 48, 48, 0.85) !important;
+  }
+  /* 暗色模式按钮只响应图标+文字区域 */
+  #dark-mode-toggle {
+    width: auto !important;
+    align-self: flex-start !important;
+  }
+
+  {{ if and (eq .Kind "page") (eq .Section "post") }}
+  /* ===== 阅读进度条（仅文章页） ===== */
+  #reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    z-index: 10000;
+    background: linear-gradient(90deg, var(--accent-color), #e91e63);
+    pointer-events: none;
+  }
+
+  #reading-progress.visible {
+    opacity: 1;
+  }
+
+  [data-scheme="dark"] #reading-progress {
+    background: rgba(255,255,255,0.7);
+  }
+  {{ end }}
+
+  /* ===== TOC 滚动跟随展开 ===== */
+  #TableOfContents ol ol {
+    display: none;
+  }
+  #TableOfContents ol ol.open {
+    display: block;
+  }
+
+  /* ===== 回到顶部按钮 ===== */
+  #back-to-top {
+    position: fixed;
+    bottom: 90px;
+    right: 24px;
+    z-index: 997;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--card-background);
+    border: 1px solid var(--card-separator-color);
+    box-shadow: var(--shadow-l1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+  }
+  #back-to-top.visible {
+    opacity: 0.85;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  #back-to-top:hover {
+    opacity: 1;
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+  }
+  #back-to-top::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-left: 2px solid var(--body-text-color);
+    border-top: 2px solid var(--body-text-color);
+    transform: rotate(45deg) translate(2px, 2px);
+  }
+  #back-to-top:hover::before {
+    border-color: #fff;
+  }
+
+  /* 代码复制按钮 — relative 相对 .highlight 定位，不在滚动容器内 */
+  .highlight .copyCodeButton {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1;
+    border: none !important;
+    border-radius: 0 4px 0 4px !important;
+    padding: 1px 8px !important;
+    min-width: 58px !important;
+    width: 58px !important;
+    max-width: 58px !important;
+    font-size: 1.05rem !important;
+    font-family: inherit !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.02em !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+    line-height: 1.8 !important;
+    cursor: pointer !important;
+    overflow: hidden !important;
+    background: rgba(128,128,128,0.08) !important;
+    color: rgba(0,0,0,0.35) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    transition: all 0.25s ease !important;
+  }
+  .highlight .copyCodeButton:hover {
+    background: rgba(128,128,128,0.16) !important;
+    color: rgba(0,0,0,0.6) !important;
+  }
+  .highlight .copyCodeButton.copied {
+    background: var(--accent-color) !important;
+    color: #fff !important;
+  }
+  [data-scheme="dark"] .highlight .copyCodeButton {
+    background: rgba(255,255,255,0.06) !important;
+    color: rgba(255,255,255,0.35) !important;
+  }
+  [data-scheme="dark"] .highlight .copyCodeButton:hover {
+    background: rgba(255,255,255,0.12) !important;
+    color: rgba(255,255,255,0.7) !important;
+  }
+  [data-scheme="dark"] .highlight .copyCodeButton.copied {
+    background: var(--accent-color) !important;
+    color: #000 !important;
+    font-weight: 500 !important;
+  }
+
+  /* 回到顶部按钮暗色模式 */
+  [data-scheme="dark"] #back-to-top::before {
+    border-color: rgba(255,255,255,0.7);
+  }
+  [data-scheme="dark"] #back-to-top:hover {
+    background: rgba(255,255,255,0.15);
+  }
+  [data-scheme="dark"] #back-to-top:hover::before {
+    border-color: #fff;
+  }
+</style>
+
+<script src="/js/blog-extras.js"></script>
+
+{{ if and (eq .Kind "page") (eq .Section "post") }}
+<script>
+// ===== 阅读进度条（仅文章页）=====
+// 滚动时显示，停止 1.5s 后淡出。JS 控制 width + opacity。
+(function() {
+    var bar = document.getElementById('reading-progress');
+    if (bar) return;
+
+    bar = document.createElement('div');
+    bar.id = 'reading-progress';
+    bar.style.opacity = '0';
+    document.body.prepend(bar);
+
+    var hideTimer = null;
+
+    function update() {
+        var scrollTop = window.scrollY || document.documentElement.scrollTop;
+        var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        if (docHeight > 0) {
+            bar.style.width = Math.min((scrollTop / docHeight) * 100, 100) + '%';
+        }
+    }
+
+    function show() {
+        bar.style.opacity = '1';
+        if (hideTimer) clearTimeout(hideTimer);
+        hideTimer = setTimeout(function() {
+            bar.style.opacity = '0';
+        }, 1500);
+    }
+
+    window.addEventListener('scroll', function() {
+        update();
+        show();
+    }, { passive: true });
+
+    update();
+})();
+</script>
+{{ end }}
+
+<script>
+// ===== PJAX 无刷新导航：保持音乐播放器跨页面不中断 =====
+(function() {
+    'use strict';
+    var MAIN_SELECTOR = 'main.main';
+
+    // 判断是否应该拦截该链接
+    function shouldIntercept(link) {
+        var href = link.getAttribute('href');
+        if (!href) return false;
+        if (!href.startsWith('/') || href.startsWith('//')) return false;
+        if (href.startsWith('#')) return false;
+        if (link.target || link.hasAttribute('download')) return false;
+        if (link.getAttribute('rel') === 'external') return false;
+        // 不拦截 APlayer 内部链接
+        if (link.closest('.aplayer')) return false;
+        // 语言切换需要完整刷新（侧边栏翻译文本需更新）
+        if (link.closest('#i18n-switch')) return false;
+        return true;
+    }
+
+    // 执行新内容中的 <script> 标签（评论、数学公式等）
+    function executeScripts(container) {
+        var scripts = container.querySelectorAll('script');
+        scripts.forEach(function(oldScript) {
+            var s = document.createElement('script');
+            for (var i = 0; i < oldScript.attributes.length; i++) {
+                var attr = oldScript.attributes[i];
+                s.setAttribute(attr.name, attr.value);
+            }
+            s.textContent = oldScript.textContent;
+            oldScript.parentNode.replaceChild(s, oldScript);
+        });
+    }
+
+    function navigate(url, addToHistory) {
+        // 轻量进度条（顶部）
+        document.documentElement.classList.add('pjax-loading');
+
+        fetch(url)
+            .then(function(res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.text();
+            })
+            .then(function(html) {
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(html, 'text/html');
+
+                var newMain = doc.querySelector(MAIN_SELECTOR);
+                var oldMain = document.querySelector(MAIN_SELECTOR);
+                if (!newMain || !oldMain) throw new Error('Missing main content');
+
+                // ① 替换主内容区
+                oldMain.innerHTML = newMain.innerHTML;
+
+                // ② 更新右侧边栏（TOC、小工具等，位于 main 外部）
+                var oldSidebar = document.querySelector('aside.right-sidebar');
+                var newSidebar = doc.querySelector('aside.right-sidebar');
+                if (newSidebar) {
+                    if (oldSidebar) {
+                        oldSidebar.innerHTML = newSidebar.innerHTML;
+                    } else {
+                        // 首页→文章页：需要插入右侧边栏
+                        var container = document.querySelector('.main-container');
+                        var refNode = container.querySelector('main.main');
+                        if (container && refNode) {
+                            var sidebar = document.createElement('aside');
+                            sidebar.className = newSidebar.className;
+                            sidebar.innerHTML = newSidebar.innerHTML;
+                            container.insertBefore(sidebar, refNode);
+                        }
+                    }
+                } else if (oldSidebar) {
+                    // 文章页→首页：移除右侧边栏
+                    oldSidebar.remove();
+                }
+
+                // ③ 更新 body class 和标题
+                document.body.className = doc.body.className;
+                document.title = doc.title;
+
+                // ④ 执行新内容中的内联脚本（Giscus 评论、KaTeX 等）
+                executeScripts(oldMain);
+
+                // ⑤ 重新初始化主题功能，恢复暗色模式偏好
+                //   Stack.init() 在 window.load 时才运行，需要手动调用来初始化 TOC scrollspy
+                //   同时重置 TOC 展开（blog-extras.js 在首页时因没有 TOC 而跳过，PJAX 后需手动触发）
+                var savedScheme = document.documentElement.getAttribute('data-scheme');
+                function reinitTOC() {
+                    window.Stack.init();
+                    // 恢复暗色模式（Stack.init 会重新设置）
+                    if (savedScheme) {
+                        document.documentElement.setAttribute('data-scheme', savedScheme);
+                    }
+                    // 重新绑定 TOC 展开（新 DOM 中的 TOC 元素需要新的 observer）
+                    if (window.__TOC__ && window.__TOC__.init) {
+                        window.__TOC__.init();
+                    }
+                }
+                if (window.Stack && typeof window.Stack.init === 'function') {
+                    setTimeout(reinitTOC, 100);
+                } else {
+                    // Stack 还没初始化（比如从首页直接导航到文章页时 Stack 可能未定义）
+                    // 兜底：直接用 __TOC__.init()
+                    setTimeout(function() {
+                        if (window.__TOC__ && window.__TOC__.init) {
+                            window.__TOC__.init();
+                        }
+                    }, 100);
+                }
+
+                // ⑥ 更新 URL 并滚动到顶部
+                if (addToHistory !== false) {
+                    history.pushState({ url: url }, doc.title, url);
+                }
+                window.scrollTo({ top: 0, behavior: 'instant' });
+
+                // ⑦ 触发完成事件
+                document.dispatchEvent(new CustomEvent('pjax:complete', { detail: { url: url } }));
+            })
+            .catch(function() {
+                // 降级：完整页面跳转（localStorage 兜底）
+                window.location.href = url;
+            })
+            .finally(function() {
+                document.documentElement.classList.remove('pjax-loading');
+            });
+    }
+
+    function onReady() {
+        document.addEventListener('click', function(e) {
+            var link = e.target.closest('a');
+            if (!link || !shouldIntercept(link)) return;
+            if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+            e.preventDefault();
+            navigate(link.getAttribute('href'));
+        });
+
+        // 记录初始页面 URL，确保后退时能恢复首页内容
+        history.replaceState({ url: window.location.href }, document.title, window.location.href);
+
+        window.addEventListener('popstate', function(e) {
+            var targetUrl = (e.state && e.state.url) ? e.state.url : window.location.href;
+            navigate(targetUrl, false);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', onReady);
+    } else {
+        onReady();
+    }
+})();
+</script>
+
+<script>
+(function() {
+    var dropdown = document.querySelector('.i18n-dropdown');
+    if (!dropdown) return;
+
+    var toggleBtn = dropdown.querySelector('[data-toggle]');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('open');
+        });
+    }
+
+    // 点击外部关闭
+    document.addEventListener('click', function(e) {
+        if (!dropdown.contains(e.target)) {
+            dropdown.classList.remove('open');
+        }
+    });
+
+    // 按 Escape 关闭
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            dropdown.classList.remove('open');
+        }
+    });
+})();
+</script>
+
+{{/* APlayer 音乐播放器 */}}
+{{- with hugo.Data.music -}}
+{{- $songs := index . "music" -}}
+{{- if $songs -}}
+<div id="aplayer"></div>
+<!-- 自定义歌词容器：独立于 APlayer，双行显示，固定在页面底部居中 -->
+<div id="custom-lrc">
+    <p id="custom-lrc-line"></p>
+    <p id="custom-lrc-next"></p>
+</div>
+<script src="/lib/aplayer/APlayer.min.js"></script>
+<script>
+(function() {
+    // ===== 持久化存储：页面切换时保留播放状态 =====
+    var STORAGE_KEY = 'aplayer_state_v2';
+    function saveState() {
+        try {
+            if (!ap || !ap.list || !ap.audio) return;
+            var state = {
+                index: ap.list.index,
+                currentTime: ap.audio ? ap.audio.currentTime : 0,
+                isPlaying: !!(ap.audio && !ap.audio.paused)
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch(e) {}
+    }
+    function loadState() {
+        try {
+            var raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch(e) { return null; }
+    }
+
+    // ===== Hugo 数据注入 =====
+    var musicList = {{ $songs | jsonify | safeJS }};
+
+    // 过滤没有有效音频 URL 的条目
+    musicList = musicList.filter(function(item) {
+        return item.url && item.url.trim() !== '';
+    });
+    if (musicList.length === 0) return;
+
+    // 提取 LRC 配置Map（song name -> lrc URL），同时从 audio 数组中移除 lrc 字段
+    // 这样 APlayer 永远不会看到 lrc 字段，也就不会显示 "Not available"
+    var lrcMap = {};
+    musicList = musicList.map(function(item) {
+        if (item.url && item.url.trim() !== '') {
+            // OSS 远程 URL 已是百分号编码形态，本地路径才需要 encodeURI
+            if (item.url.indexOf('http') !== 0) {
+                item.url = encodeURI(item.url);
+            }
+        }
+        if (item.cover && item.cover.trim() !== '') {
+            if (item.cover.indexOf('http') !== 0) {
+                item.cover = encodeURI(item.cover);
+            }
+        }
+        if (item.lrc && typeof item.lrc === 'string' && item.lrc.trim() !== '') {
+            if (item.lrc.indexOf('http') === 0) {
+                lrcMap[item.name] = item.lrc;
+            } else {
+                lrcMap[item.name] = encodeURI(item.lrc.trim());
+            }
+        }
+        // 总是删除 lrc，避免 APlayer 尝试渲染
+        delete item.lrc;
+        return item;
+    });
+
+    // lrcType: 0 = APlayer 完全不处理歌词，不渲染 .aplayer-lrc 容器
+    var ap = new APlayer({
+        container: document.getElementById('aplayer'),
+        fixed: true,
+        autoplay: false,
+        preload: 'metadata',
+        theme: '#b7daff',
+        loop: 'all',
+        order: 'list',
+        listFolded: true,
+        lrcType: 0,
+        audio: musicList
+    });
+
+    // ===== 自定义歌词系统 =====
+    var lrcContainer = document.getElementById('custom-lrc');
+    var lrcLineEl = document.getElementById('custom-lrc-line');
+    var lrcNextEl = document.getElementById('custom-lrc-next');
+    if (!lrcContainer || !lrcLineEl || !lrcNextEl) return;
+
+    // 解析 LRC 文本为 [{time: seconds, text: string}, ...]
+    // 同一时间戳出现多行时，保留第一行（通常是中文原文，后续为拼音/翻译）
+    function parseLRC(lrcText) {
+        var lines = lrcText.split('\n');
+        var result = [];
+        var seenTimes = {};  // 去重：同一时间戳只保留第一条
+        var tagRe = /\[(\d{2}):(\d{2})(?:[.:](\d{2,3}))?\]/;
+        for (var i = 0; i < lines.length; i++) {
+            var match = tagRe.exec(lines[i]);
+            if (!match) continue;
+            var min = parseInt(match[1], 10);
+            var sec = parseInt(match[2], 10);
+            var ms = match[3] ? parseInt(match[3], 10) : 0;
+            if (match[3] && match[3].length === 2) ms = ms * 10;
+            var time = min * 60 + sec + ms / 1000;
+            var text = lines[i].replace(tagRe, '').replace(/^\s+/, '').trim();
+            if (text.length > 0 && !seenTimes[time.toFixed(3)]) {
+                seenTimes[time.toFixed(3)] = true;
+                result.push({time: time, text: text});
+            }
+        }
+        result.sort(function(a, b) { return a.time - b.time; });
+        return result;
+    }
+
+    // 获取当前播放歌曲的名称（安全取值）
+    // ap.audio 是 HTML5 Audio 元素，只有 src/currentTime 等属性；
+    // 歌曲元数据（name/artist/lrc）存在 ap.list.audios[] 中
+    function getCurrentSongName() {
+        try {
+            return ap.list.audios[ap.list.index].name;
+        } catch(e) { return null; }
+    }
+
+    // 当前歌词数据引用（不为 null 表示有歌词）
+    var currentLrc = null;
+    var lastCurrentText = '';
+    var lastNextText = '';
+
+    // 预加载所有 LRC 内容，加载完成后自动关联当前歌曲
+    var lrcData = {};
+    Object.keys(lrcMap).forEach(function(name) {
+        fetch(lrcMap[name])
+            .then(function(res) { return res.text(); })
+            .then(function(text) {
+                lrcData[name] = parseLRC(text);
+                // 如果当前正在播放这首歌，立即关联歌词
+                var curName = getCurrentSongName();
+                if (curName === name) {
+                    currentLrc = lrcData[name];
+                    lastCurrentText = '';
+                    lastNextText = '';
+                    lrcLineEl.textContent = '';
+                    lrcNextEl.textContent = '';
+                    if (!lrcManuallyHidden && ap.audio && !ap.audio.paused) {
+                        lrcContainer.style.display = 'block';
+                    }
+                }
+            })
+            .catch(function(){ /* 加载失败静默忽略 */ });
+    });
+
+    // 根据当前时间和歌词数组找到当前行和下一行
+    function findCurrentAndNext(lyrics, currentTime) {
+        if (!lyrics || lyrics.length === 0) return { current: null, next: null };
+        var idx = 0;
+        for (var i = 0; i < lyrics.length; i++) {
+            if (currentTime >= lyrics[i].time) {
+                idx = i;
+            } else {
+                break;
+            }
+        }
+        var next = (idx + 1 < lyrics.length) ? lyrics[idx + 1] : null;
+        return { current: lyrics[idx], next: next };
+    }
+
+    // 切歌时更新 LRC 数据引用（仅在音频真正播放时才显示歌词容器）
+    function switchLrc() {
+        var name = getCurrentSongName();
+        if (!name) return;
+        currentLrc = lrcData[name] || null;
+        lastCurrentText = '';
+        lastNextText = '';
+        lrcLineEl.textContent = '';
+        lrcNextEl.textContent = '';
+        // 关键：只有音频真正在播放时才显示歌词，避免页面加载时歌词框闪现
+        if (!lrcManuallyHidden && currentLrc && currentLrc.length > 0 && ap.audio && !ap.audio.paused) {
+            lrcContainer.style.display = 'block';
+        } else {
+            lrcContainer.style.display = 'none';
+        }
+    }
+
+    // 用户手动切换歌词显示状态（通过 APlayer 的歌词按钮）
+    var lrcManuallyHidden = false;
+
+    // 劫持 APlayer 歌词按钮，控制自定义歌词容器
+    function bindLrcButton() {
+        var lrcBtn = document.querySelector('.aplayer-icon-lrc');
+        if (!lrcBtn) {
+            // APlayer 按钮可能尚未渲染，延迟重试
+            setTimeout(bindLrcButton, 300);
+            return;
+        }
+        lrcBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            lrcManuallyHidden = !lrcManuallyHidden;
+            if (lrcManuallyHidden) {
+                lrcContainer.style.display = 'none';
+            } else {
+                // 恢复自动行为：如果当前歌曲有歌词且正在播放，则显示
+                var name = getCurrentSongName();
+                if (name && lrcData[name] && lrcData[name].length > 0 && ap.audio && !ap.audio.paused) {
+                    currentLrc = lrcData[name];
+                    lrcContainer.style.display = 'block';
+                }
+            }
+        });
+    }
+    bindLrcButton();
+
+    // 检查是否应该显示歌词（综合用户手动控制和自动逻辑）
+    function shouldShowLrc() {
+        if (lrcManuallyHidden) return false;
+        var name = getCurrentSongName();
+        return name && lrcData[name] && lrcData[name].length > 0;
+    }
+
+    // ===== APlayer 事件监听 =====
+    ap.on('play', function() {
+        if (shouldShowLrc()) {
+            var name = getCurrentSongName();
+            currentLrc = lrcData[name];
+            lrcContainer.style.display = 'block';
+        }
+        saveState();
+    });
+    ap.on('pause', function() {
+        lrcContainer.style.display = 'none';
+        saveState();
+    });
+    ap.on('ended', function() {
+        lrcContainer.style.display = 'none';
+        saveState();
+    });
+    // 用 setTimeout 延迟处理，等 APlayer 内部更新 index 后再读取
+    ap.on('listswitch', function() {
+        setTimeout(function() {
+            switchLrc();
+        }, 150);
+        saveState();
+    });
+    ap.on('seeked', function() {
+        saveState();
+    });
+
+    // 添加/移除淡入淡出动画 class
+    function flashFade(el) {
+        el.classList.add('fade');
+        clearTimeout(el._fadeTimer);
+        el._fadeTimer = setTimeout(function() {
+            el.classList.remove('fade');
+        }, 350);
+    }
+
+    // 使用 requestAnimationFrame 平滑轮询播放时间，每帧自愈查找歌词
+    function tick() {
+        try {
+            if (ap.audio) {
+                var audio = ap.audio;
+                if (!audio.paused && !lrcManuallyHidden) {
+                    // 每帧动态查找当前歌曲的歌词（自愈机制：即使 switchLrc 时序出错也能恢复）
+                    var songName = getCurrentSongName();
+                    if (songName && lrcData[songName] && lrcData[songName].length > 0) {
+                        if (currentLrc !== lrcData[songName]) {
+                            currentLrc = lrcData[songName];
+                            lastCurrentText = '';
+                            lastNextText = '';
+                        }
+                        var lines = findCurrentAndNext(currentLrc, audio.currentTime);
+                        if (lines.current && lines.current.text !== lastCurrentText) {
+                            lastCurrentText = lines.current.text;
+                            lrcLineEl.textContent = lines.current.text;
+                            flashFade(lrcLineEl);
+                        }
+                        var nextText = lines.next ? lines.next.text : '';
+                        if (nextText !== lastNextText) {
+                            lastNextText = nextText;
+                            lrcNextEl.textContent = nextText;
+                            if (nextText) flashFade(lrcNextEl);
+                        }
+                        if (lrcContainer.style.display !== 'block') {
+                            lrcContainer.style.display = 'block';
+                        }
+                    } else if (!songName || !lrcData[songName]) {
+                        if (lrcContainer.style.display !== 'none') {
+                            lrcContainer.style.display = 'none';
+                        }
+                    }
+                }
+            }
+        } catch(e) {}
+        requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    // ===== 恢复上次播放状态（跨页面持久化） =====
+    var saved = loadState();
+    if (saved && saved.index >= 0 && saved.index < ap.list.audios.length) {
+        // 切到上次播放的歌曲，并设为自动预加载以加速恢复
+        ap.list.switch(saved.index);
+        if (ap.audio) {
+            ap.audio.preload = 'auto'; // 切换后主动预加载，减少缓冲时间
+        }
+
+        if (saved.currentTime > 0 || saved.isPlaying) {
+            var restored = false;
+            function restorePlayback() {
+                if (restored) return;
+                restored = true;
+                try {
+                    if (saved.currentTime > 1) {
+                        ap.seek(saved.currentTime);
+                    }
+                    if (saved.isPlaying) {
+                        ap.play();
+                    }
+                } catch(e) {}
+            }
+            // 优先使用 loadedmetadata（比 canplay 更快触发）
+            if (ap.audio) {
+                ap.audio.addEventListener('loadedmetadata', restorePlayback, { once: true });
+            }
+            ap.on('canplay', restorePlayback);
+            // 兜底：1.5s 后强制恢复（比之前 3s 更短，降低卡顿感）
+            setTimeout(function() {
+                if (!restored) {
+                    try {
+                        if (saved.currentTime > 1) ap.seek(saved.currentTime);
+                        if (saved.isPlaying) ap.play();
+                    } catch(e) {}
+                    restored = true;
+                }
+            }, 1500);
+        }
+    }
+
+    // 页面离开前保存状态
+    window.addEventListener('beforeunload', saveState);
+    // 定期保存（每 3 秒），更精确保留进度
+    setInterval(saveState, 3000);
+    // 音频进度更新时也保存（比较轻量，仅在时间变化较大时）
+    var lastSavedTime = 0;
+    ap.on('timeupdate', function() {
+        try {
+            if (ap.audio && Math.abs(ap.audio.currentTime - lastSavedTime) > 5) {
+                lastSavedTime = ap.audio.currentTime;
+                saveState();
+            }
+        } catch(e) {}
+    });
+
+    // 首次触发：加载当前歌曲歌词
+    switchLrc();
+})();
+</script>
+
+
+
+
+
+{{- end }}
+{{- end }}

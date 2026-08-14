@@ -1,0 +1,99 @@
+mainSections   = ["post"]
+rssFullContent = true
+favicon        = "/img/avatar.ico"
+
+# 页脚
+[footer]
+    since = 2026
+    customText = '记录技术与生活'
+
+# 文章日期格式化
+[dateFormat]
+    published = '2006-01-02'
+    lastUpdated = '2006-01-02'
+
+# 侧边栏
+[sidebar]
+    emoji    = "😎"
+    subtitle = "持续学习中"
+    avatar   = "/img/avatar.jpg"
+
+[article]
+    headingAnchor = true
+    math          = false
+    toc           = true
+    readingTime   = false
+    lastmod       = true
+
+    [article.list]
+        showTags = true
+    
+    [article.license]
+        enabled = true
+        default = "[Wuwei's Blog](https://wangyj-hn.github.io/)"
+    
+    [article.mermaid]
+        look                  = "classic"
+        lightTheme            = "default"
+        darkTheme             = "dark"
+        securityLevel         = "strict"
+        htmlLabels            = true
+        transparentBackground = false
+    
+    [article.alertIcon]
+        note      = "📝"
+        tip       = "💡"
+        important = "📌"
+        warning   = "⚠️"
+        caution   = "🚨"
+
+# 右侧侧边栏小部件
+[widgets]
+    homepage = [
+        { type = "search" },
+        { type = "archives", params = { limit = 5 } },
+        { type = "categories", params = { limit = 10 } },
+    ]
+    page     = [{ type = "toc" }]
+
+# 评论区
+[comments]
+    enabled  = true
+    provider = "giscus"
+
+    [comments.giscus]
+        repo             = "wangyj-hn/wangyj-hn.github.io"
+        repoID           = "R_kgDOSnUB8Q"
+        category         = "Announcements"
+        categoryID       = "DIC_kwDOSnUB8c4C-Ay_"
+        mapping          = "pathname"
+        lightTheme       = "light"
+        darkTheme        = "dark_dimmed"
+        reactionsEnabled = 1
+        emitMetadata     = 0
+        inputPosition    = "bottom"
+        lang             = "zh-CN"
+        strict           = 0
+        loading          = "lazy"
+
+# 颜色模式切换
+[colorScheme]
+    toggle  = true
+    default = "auto"
+
+# 图片处理优化
+[imageProcessing]
+    autoOrient = false
+    [imageProcessing.content]
+        widths  = [800, 1600, 2400]
+        enabled = true
+    [imageProcessing.thumbnail]
+        enabled = true
+
+# Cookie 同意
+[cookies]
+    enabled = false
+
+[author]
+    name = "Wuwei"
+    home = "/"

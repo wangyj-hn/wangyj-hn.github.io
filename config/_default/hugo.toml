@@ -1,0 +1,23 @@
+# 博客基础配置
+baseURL = "https://wangyj-hn.github.io"
+locale = "zh"
+title = "Wuwei"
+
+hasCJKLanguage = true
+theme = "hugo-theme-stack"
+defaultContentLanguage = "zh"
+
+# SEO
+enableRobotsTXT = true
+summaryLength = 120
+
+[frontmatter]
+    showLastmod = [":frontmatter", "lastmod", ":fileModTime", ":default"]
+
+[pagination]
+    pagerSize = 6
+
+[permalinks]
+    post = "/p/:slug/"
+    page = "/:slug/"
+
