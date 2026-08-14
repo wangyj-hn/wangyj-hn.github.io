@@ -16,7 +16,7 @@
 [[music]]
 name = "三葉のテーマ"
 artist = "RADWIMPS"
-url = "https://wyww7-music.oss-cn-hangzhou.aliyuncs.com/三葉のテーマ - RADWIMPS.mp3"
+url = "/static/music/三葉のテーマ - RADWIMPS.mp3"
 cover = "/img/kiminonaha_jk_tsujo_tw-1.jpg"
 
 [[music]]
