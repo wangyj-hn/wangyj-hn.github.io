@@ -23,7 +23,7 @@ cover = "/img/kiminonaha_jk_tsujo_tw-1.jpg"
 name = "奥寺先輩のテーマ"
 artist = "RADWIMPS"
 url = "/music/kataware_jiki_2.mp3"
-cover = "/img/kiminonaha_jk_tsujo_tw-1.jpg"
+# cover = "/img/kiminonaha_jk_tsujo_tw-1.jpg"
 
 [[music]]
 name = "かたわれ時"
